@@ -21,7 +21,7 @@ jobs:
             MERGED_TIME=$(date -d "$RECENT_MERGED_PR" +%s)
             CURRENT_TIME=$(date +%s)
             TIME_DIFF=$((CURRENT_TIME - MERGED_TIME))
-            if [[ $TIME_DIFF -le 600 ]]; then
+            if [[ $TIME_DIFF -le 60 ]]; then
               echo "recent_merge=true" >> $GITHUB_OUTPUT
             else
               echo "recent_merge=false" >> $GITHUB_OUTPUT
