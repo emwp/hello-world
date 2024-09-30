@@ -1,0 +1,41 @@
+name: Analyze Draft Protocol
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  analyze-and-merge:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.title, '[canvas]')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for recent merged PRs
+        id: check_recent_prs
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          RECENT_MERGED_PR=$(gh pr list --author "$AUTHOR" --state merged --limit 1 --json mergedAt --jq '.[0].mergedAt')
+          if [[ -n "$RECENT_MERGED_PR" ]]; then
+            MERGED_TIME=$(date -d "$RECENT_MERGED_PR" +%s)
+            CURRENT_TIME=$(date +%s)
+            TIME_DIFF=$((CURRENT_TIME - MERGED_TIME))
+            if [[ $TIME_DIFF -le 600 ]]; then
+              echo "recent_merge=true" >> $GITHUB_OUTPUT
+            else
+              echo "recent_merge=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "recent_merge=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Approve and merge PR
+        if: steps.check_recent_prs.outputs.recent_merge == 'false'
+        run: |
+          gh pr review ${{ github.event.pull_request.number }} --approve
+          gh pr merge ${{ github.event.pull_request.number }} --merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
